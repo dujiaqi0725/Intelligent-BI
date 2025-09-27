@@ -1,18 +1,15 @@
 import Footer from '@/components/Footer';
+import { userRegisterUsingPost } from '@/services/intelligentBI/userController';
 import { LockOutlined, UserOutlined } from '@ant-design/icons';
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { useEmotionCss } from '@ant-design/use-emotion-css';
 import { Helmet, history, Link, useModel } from '@umijs/max';
 import { message, Tabs } from 'antd';
 import React, { useState } from 'react';
-import { flushSync } from 'react-dom';
 import Settings from '../../../../config/defaultSettings';
-import { getLoginUserUsingGet, userLoginUsingPost } from '@/services/intelligentBI/userController';
 
-const Login: React.FC = () => {
-  const [userLoginState, setUserLoginState] = useState<API.LoginResult>({});
+const Register: React.FC = () => {
   const [type, setType] = useState<string>('account');
-  const { initialState, setInitialState } = useModel('@@initialState');
   const containerClassName = useEmotionCss(() => {
     return {
       display: 'flex',
@@ -25,37 +22,14 @@ const Login: React.FC = () => {
     };
   });
 
-  // useEffect(() => {
-  //   listChartByPageUsingPost({}).then(res => {
-  //     console.error('res', res)
-  //   })
-  // })
-
-  /**
-   *  登录成功后，获取用户的登录信息
-   */
-
-  const fetchUserInfo = async () => {
-    const userInfo = await getLoginUserUsingGet();
-    if (userInfo) {
-      flushSync(() => {
-        setInitialState((s) => ({
-          ...s,
-          currentUser: userInfo,
-        }));
-      });
-    }
-  };
-  const handleSubmit = async (values: API.UserLoginRequest) => {
+  const handleSubmit = async (values: API.UserRegisterRequest) => {
     try {
-      // 登录
-      const res = await userLoginUsingPost({
+      const res = await userRegisterUsingPost({
         ...values,
       });
       if (res.code === 0) {
-        const defaultLoginSuccessMessage = '登录成功！';
+        const defaultLoginSuccessMessage = '注册成功！';
         message.success(defaultLoginSuccessMessage);
-        await fetchUserInfo();
         const urlParams = new URL(window.location.href).searchParams;
         history.push(urlParams.get('redirect') || '/');
         return;
@@ -63,17 +37,16 @@ const Login: React.FC = () => {
         message.error(res.message);
       }
     } catch (error) {
-      const defaultLoginFailureMessage = '登录失败，请重试！';
+      const defaultLoginFailureMessage = '注册失败，请重试！';
       console.log(error);
       message.error(defaultLoginFailureMessage);
     }
   };
-  const { status, type: loginType } = userLoginState;
   return (
     <div className={containerClassName}>
       <Helmet>
         <title>
-          {'登录'}- {Settings.title}
+          {'注册'}- {Settings.title}
         </title>
       </Helmet>
       <div
@@ -91,7 +64,12 @@ const Login: React.FC = () => {
           title="智能 BI"
           subTitle={'智能 BI 是一个智能BI项目'}
           onFinish={async (values) => {
-            await handleSubmit(values as API.UserLoginRequest);
+            await handleSubmit(values as API.UserRegisterRequest);
+          }}
+          submitter={{
+            searchConfig: {
+              submitText: "注册",
+            },
           }}
         >
           <Tabs
@@ -101,7 +79,7 @@ const Login: React.FC = () => {
             items={[
               {
                 key: 'account',
-                label: '账户密码登录',
+                label: '用户注册',
               },
             ]}
           />
@@ -135,6 +113,20 @@ const Login: React.FC = () => {
                   },
                 ]}
               />
+              <ProFormText.Password
+                name="checkPassword"
+                fieldProps={{
+                  size: 'large',
+                  prefix: <LockOutlined />,
+                }}
+                placeholder={'请再次确认密码'}
+                rules={[
+                  {
+                    required: true,
+                    message: '密码是必填项！',
+                  },
+                ]}
+              />
             </>
           )}
           <div
@@ -142,7 +134,7 @@ const Login: React.FC = () => {
               marginBottom: 24,
             }}
           >
-            <Link to="/user/register">注册</Link>
+            <Link to="/user/login">登录</Link>
           </div>
         </LoginForm>
       </div>
@@ -151,4 +143,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Register;

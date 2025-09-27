@@ -20,7 +20,7 @@ import java.util.List;
 public class ChartUpdateRequest implements Serializable {
 
     /**
-     * 图表 Id
+     * 图表  Id
      */
     private Long id;
 

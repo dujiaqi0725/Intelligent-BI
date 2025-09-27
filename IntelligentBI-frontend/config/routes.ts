@@ -1,5 +1,6 @@
 ﻿export default [
   { path: '/user', layout: false, routes: [{ path: '/user/login', component: './user/login' }] },
+  { path: '/user', layout: false, routes: [{ path: '/user/register', component: './user/register' }] },
   { path: '/welcome', icon: 'smile', component: './Welcome' },
   {
     path: '/admin',
