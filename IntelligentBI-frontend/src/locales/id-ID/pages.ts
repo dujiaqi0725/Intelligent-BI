@@ -2,8 +2,7 @@ export default {
   'pages.layouts.userLayout.title':
     'Ant Design adalah spesifikasi desain Web yang paling berpengaruh di Kabupaten Xihu',
   'pages.login.accountLogin.tab': 'Login dengan akun',
-  'pages.login.accountLogin.errorMessage':
-    'Nama pengguna dan kata sandi salah(admin/ant.design)',
+  'pages.login.accountLogin.errorMessage': 'Nama pengguna dan kata sandi salah(admin/ant.design)',
   'pages.login.failure': 'Log masuk gagal, silakan coba lagi!',
   'pages.login.success': 'Login berhasil!',
   'pages.login.username.placeholder': 'nama pengguna: admin atau user',
@@ -27,8 +26,6 @@ export default {
   'pages.welcome.link': 'Selamat datang',
   'pages.welcome.alertMessage':
     'Komponen heavy-duty yang lebih cepat dan lebih kuat telah dirilis.',
-  'pages.404.subTitle': 'Maaf, halaman yang Anda kunjungi tidak ada. ',
-  'pages.404.buttonText': 'Kembali ke halaman utama',
   'pages.admin.subPage.title': 'Halaman ini hanya dapat dilihat oleh admin',
   'pages.admin.subPage.alertMessage':
     'umi ui telah dirilis, silahkan gunakan npm run ui untuk memulai pengalaman.',
@@ -36,8 +33,7 @@ export default {
   'pages.searchTable.updateForm.ruleConfig': 'Konfigurasi aturan',
   'pages.searchTable.updateForm.basicConfig': 'Informasi dasar',
   'pages.searchTable.updateForm.ruleName.nameLabel': 'Nama aturan',
-  'pages.searchTable.updateForm.ruleName.nameRules':
-    'Harap masukkan nama aturan!',
+  'pages.searchTable.updateForm.ruleName.nameRules': 'Harap masukkan nama aturan!',
   'pages.searchTable.updateForm.ruleDesc.descLabel': 'Deskripsi aturan',
   'pages.searchTable.updateForm.ruleDesc.descPlaceholder':
     'Harap masukkan setidaknya lima karakter',
@@ -49,8 +45,7 @@ export default {
   'pages.searchTable.updateForm.ruleProps.typeLabel': 'Jenis aturan',
   'pages.searchTable.updateForm.schedulingPeriod.title': 'Periode penjadwalan',
   'pages.searchTable.updateForm.schedulingPeriod.timeLabel': 'Waktu mulai',
-  'pages.searchTable.updateForm.schedulingPeriod.timeRules':
-    'Pilih waktu mulai!',
+  'pages.searchTable.updateForm.schedulingPeriod.timeRules': 'Pilih waktu mulai!',
   'pages.searchTable.titleDesc': 'deskripsi',
   'pages.searchTable.ruleName': 'Nama aturan wajib diisi',
   'pages.searchTable.titleCallNo': 'Jumlah panggilan',

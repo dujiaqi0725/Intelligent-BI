@@ -1,18 +1,10 @@
 // https://umijs.org/config/
-
 import { defineConfig } from '@umijs/max';
-import { join } from 'node:path';
+import { join } from 'path';
 import defaultSettings from './defaultSettings';
 import proxy from './proxy';
 import routes from './routes';
 const { REACT_APP_ENV = 'dev' } = process.env;
-
-/**
- * @name 使用公共路径
- * @description 部署时的路径，如果部署在非根目录下，需要配置这个变量
- * @doc https://umijs.org/docs/api/config#publicpath
- */
-const PUBLIC_PATH: string = '/';
 export default defineConfig({
   /**
    * @name 开启 hash 模式
@@ -20,7 +12,6 @@ export default defineConfig({
    * @doc https://umijs.org/docs/api/config#hash
    */
   hash: true,
-  publicPath: PUBLIC_PATH,
   /**
    * @name 兼容性设置
    * @description 设置 ie11 不一定完美兼容，需要检查自己使用的所有依赖
@@ -40,9 +31,13 @@ export default defineConfig({
    * @name 主题的配置
    * @description 虽然叫主题，但是其实只是 less 的变量设置
    * @doc antd的主题设置 https://ant.design/docs/react/customize-theme-cn
-   * @doc umi 的 theme 配置 https://umijs.org/docs/api/config#theme
+   * @doc umi 的theme 配置 https://umijs.org/docs/api/config#theme
    */
-  // theme: { '@primary-color': '#1DA57A' }
+  theme: {
+    // 如果不想要 configProvide 动态设置主题需要把这个设置为 default
+    // 只有设置为 variable， 才能使用 configProvide 动态设置主色调
+    'root-entry-name': 'variable',
+  },
   /**
    * @name moment 的国际化配置
    * @description 如果对国际化没有要求，打开之后能减少js的包大小
@@ -100,17 +95,7 @@ export default defineConfig({
    * @description 内置了 babel import 插件
    * @doc https://umijs.org/docs/max/antd#antd
    */
-  antd: {
-    appConfig: {},
-    configProvider: {
-      theme: {
-        cssVar: true,
-        token: {
-          fontFamily: 'AlibabaSans, sans-serif',
-        },
-      },
-    },
-  },
+  antd: {},
   /**
    * @name 网络请求配置
    * @description 它基于 axios 和 ahooks 的 useRequest 提供了一套统一的网络请求和错误处理方案。
@@ -130,7 +115,7 @@ export default defineConfig({
   headScripts: [
     // 解决首次加载时白屏的问题
     {
-      src: join(PUBLIC_PATH, 'scripts/loading.js'),
+      src: '/scripts/loading.js',
       async: true,
     },
   ],
@@ -145,26 +130,19 @@ export default defineConfig({
     {
       requestLibPath: "import { request } from '@umijs/max'",
       // 或者使用在线的版本
-      // schemaPath: "https://gw.alipayobjects.com/os/antfincdn/M%24jrzTTYJN/oneapi.json"
-      schemaPath: join(__dirname, 'oneapi.json'),
+      schemaPath: "http://localhost:8101/api/v2/api-docs",
+      projectName: 'intelligentBI',
+      // schemaPath: join(__dirname, 'oneapi.json'),
       mock: false,
     },
-    {
-      requestLibPath: "import { request } from '@umijs/max'",
-      schemaPath: 'https://gw.alipayobjects.com/os/antfincdn/CA1dOm%2631B/openapi.json',
-      projectName: 'swagger',
-    },
+    // {
+    //   requestLibPath: "import { request } from '@umijs/max'",
+    //   schemaPath: 'https://gw.alipayobjects.com/os/antfincdn/CA1dOm%2631B/openapi.json',
+    //   projectName: 'swagger',
+    // },
   ],
-  mock: {
-    include: ['mock/**/*', 'src/pages/**/_mock.ts'],
+  mfsu: {
+    strategy: 'normal',
   },
-  /**
-   * @name 是否开启 mako
-   * @description 使用 mako 极速研发
-   * @doc https://umijs.org/docs/api/config#mako
-   */
-  mako: {},
-  esbuildMinifyIIFE: true,
   requestRecord: {},
-  exportStatic: {},
 });

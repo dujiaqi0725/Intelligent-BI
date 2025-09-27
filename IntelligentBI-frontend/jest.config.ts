@@ -1,11 +1,13 @@
 import { configUmiAlias, createConfig } from '@umijs/max/test';
 
-export default async (): Promise<any> => {
+export default async () => {
   const config = await configUmiAlias({
     ...createConfig({
       target: 'browser',
     }),
   });
+
+  console.log();
   return {
     ...config,
     testEnvironmentOptions: {

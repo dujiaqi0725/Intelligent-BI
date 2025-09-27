@@ -1,4 +1,4 @@
-import { Footer } from '@/components';
+import Footer from '@/components/Footer';
 import { login } from '@/services/ant-design-pro/api';
 import { getFakeCaptcha } from '@/services/ant-design-pro/login';
 import {
@@ -15,15 +15,18 @@ import {
   ProFormCheckbox,
   ProFormText,
 } from '@ant-design/pro-components';
-import { Helmet, useModel } from '@umijs/max';
-import { Alert, App, Tabs } from 'antd';
-import { createStyles } from 'antd-style';
-import React, { useState } from 'react';
+import { useEmotionCss } from '@ant-design/use-emotion-css';
+import { Helmet, history, useModel } from '@umijs/max';
+import { Alert, message, Tabs } from 'antd';
+import React, {useEffect, useState} from 'react';
 import { flushSync } from 'react-dom';
 import Settings from '../../../../config/defaultSettings';
-const useStyles = createStyles(({ token }) => {
-  return {
-    action: {
+import {listChartByPageUsingPost} from "@/services/intelligentBI/chartController";
+
+
+const ActionIcons = () => {
+  const langClassName = useEmotionCss(({ token }) => {
+    return {
       marginLeft: '8px',
       color: 'rgba(0, 0, 0, 0.2)',
       fontSize: '24px',
@@ -33,8 +36,19 @@ const useStyles = createStyles(({ token }) => {
       '&:hover': {
         color: token.colorPrimaryActive,
       },
-    },
-    lang: {
+    };
+  });
+  return (
+    <>
+      <AlipayCircleOutlined key="AlipayCircleOutlined" className={langClassName} />
+      <TaobaoCircleOutlined key="TaobaoCircleOutlined" className={langClassName} />
+      <WeiboCircleOutlined key="WeiboCircleOutlined" className={langClassName} />
+    </>
+  );
+};
+const Lang = () => {
+  const langClassName = useEmotionCss(({ token }) => {
+    return {
       width: 42,
       height: 42,
       lineHeight: '42px',
@@ -44,30 +58,8 @@ const useStyles = createStyles(({ token }) => {
       ':hover': {
         backgroundColor: token.colorBgTextHover,
       },
-    },
-    container: {
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100vh',
-      overflow: 'auto',
-      backgroundImage:
-        "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
-      backgroundSize: '100% 100%',
-    },
-  };
-});
-const ActionIcons = () => {
-  const { styles } = useStyles();
-  return (
-    <>
-      <AlipayCircleOutlined key="AlipayCircleOutlined" className={styles.action} />
-      <TaobaoCircleOutlined key="TaobaoCircleOutlined" className={styles.action} />
-      <WeiboCircleOutlined key="WeiboCircleOutlined" className={styles.action} />
-    </>
-  );
-};
-const Lang = () => {
-  const { styles } = useStyles();
+    };
+  });
   return;
 };
 const LoginMessage: React.FC<{
@@ -85,11 +77,29 @@ const LoginMessage: React.FC<{
   );
 };
 const Login: React.FC = () => {
+
   const [userLoginState, setUserLoginState] = useState<API.LoginResult>({});
   const [type, setType] = useState<string>('account');
   const { initialState, setInitialState } = useModel('@@initialState');
-  const { styles } = useStyles();
-  const { message } = App.useApp();
+  const containerClassName = useEmotionCss(() => {
+    return {
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100vh',
+      overflow: 'auto',
+      backgroundImage:
+        "url('https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/V-_oS6r-i7wAAAAAAAAAAAAAFl94AQBr')",
+      backgroundSize: '100% 100%',
+    };
+  });
+
+
+  useEffect(() => {
+    listChartByPageUsingPost({}).then(res => {
+      console.error('res', res)
+    })
+  })
+
   const fetchUserInfo = async () => {
     const userInfo = await initialState?.fetchUserInfo?.();
     if (userInfo) {
@@ -113,7 +123,7 @@ const Login: React.FC = () => {
         message.success(defaultLoginSuccessMessage);
         await fetchUserInfo();
         const urlParams = new URL(window.location.href).searchParams;
-        window.location.href = urlParams.get('redirect') || '/';
+        history.push(urlParams.get('redirect') || '/');
         return;
       }
       console.log(msg);
@@ -127,14 +137,12 @@ const Login: React.FC = () => {
   };
   const { status, type: loginType } = userLoginState;
   return (
-    <div className={styles.container}>
+    <div className={containerClassName}>
       <Helmet>
         <title>
-          {'登录'}
-          {Settings.title && ` - ${Settings.title}`}
+          {'登录'}- {Settings.title}
         </title>
       </Helmet>
-      <Lang />
       <div
         style={{
           flex: '1',
@@ -286,4 +294,5 @@ const Login: React.FC = () => {
     </div>
   );
 };
+
 export default Login;

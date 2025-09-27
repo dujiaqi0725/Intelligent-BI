@@ -1,18 +1,19 @@
-import { AvatarDropdown, AvatarName, Footer, Question } from '@/components';
-import { currentUser as queryCurrentUser } from '@/services/ant-design-pro/api';
+import Footer from '@/components/Footer';
+import { Question } from '@/components/RightContent';
 import { LinkOutlined } from '@ant-design/icons';
 import type { Settings as LayoutSettings } from '@ant-design/pro-components';
 import { SettingDrawer } from '@ant-design/pro-components';
-import '@ant-design/v5-patch-for-react-19';
-import type { RequestConfig, RunTimeLayoutConfig } from '@umijs/max';
+import type { RunTimeLayoutConfig } from '@umijs/max';
 import { history, Link } from '@umijs/max';
 import defaultSettings from '../config/defaultSettings';
+import { AvatarDropdown, AvatarName } from './components/RightContent/AvatarDropdown';
 import { errorConfig } from './requestErrorConfig';
+import { currentUser as queryCurrentUser } from './services/ant-design-pro/api';
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
 
 /**
- * @see https://umijs.org/docs/api/runtime-config#getinitialstate
+ * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
  * */
 export async function getInitialState(): Promise<{
   settings?: Partial<LayoutSettings>;
@@ -26,14 +27,14 @@ export async function getInitialState(): Promise<{
         skipErrorHandler: true,
       });
       return msg.data;
-    } catch (_error) {
+    } catch (error) {
       history.push(loginPath);
     }
     return undefined;
   };
   // 如果不是登录页面，执行
   const { location } = history;
-  if (![loginPath, '/user/register', '/user/register-result'].includes(location.pathname)) {
+  if (location.pathname !== loginPath) {
     const currentUser = await fetchUserInfo();
     return {
       fetchUserInfo,
@@ -69,7 +70,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
         history.push(loginPath);
       }
     },
-    bgLayoutImgList: [
+    layoutBgImgList: [
       {
         src: 'https://mdn.alipayobjects.com/yuyan_qk0oxh/afts/img/D2LWSqNny4sAAAAAAAAAAAAAFl94AQBr',
         left: 85,
@@ -106,19 +107,17 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
       return (
         <>
           {children}
-          {isDev && (
-            <SettingDrawer
-              disableUrlParams
-              enableDarkTheme
-              settings={initialState?.settings}
-              onSettingChange={(settings) => {
-                setInitialState((preInitialState) => ({
-                  ...preInitialState,
-                  settings,
-                }));
-              }}
-            />
-          )}
+          <SettingDrawer
+            disableUrlParams
+            enableDarkTheme
+            settings={initialState?.settings}
+            onSettingChange={(settings) => {
+              setInitialState((preInitialState) => ({
+                ...preInitialState,
+                settings,
+              }));
+            }}
+          />
         </>
       );
     },
@@ -131,7 +130,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
  * 它基于 axios 和 ahooks 的 useRequest 提供了一套统一的网络请求和错误处理方案。
  * @doc https://umijs.org/docs/max/request#配置
  */
-export const request: RequestConfig = {
-  baseURL: 'https://proapi.azurewebsites.net',
+export const request = {
+  baseURL: "http://localhost:12345",
   ...errorConfig,
 };

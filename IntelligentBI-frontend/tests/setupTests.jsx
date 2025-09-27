@@ -1,8 +1,4 @@
-﻿import { defaultConfig } from 'antd/lib/theme/internal';
-
-defaultConfig.hashed = false;
-
-const localStorageMock = {
+﻿const localStorageMock = {
   getItem: jest.fn(),
   setItem: jest.fn(),
   removeItem: jest.fn(),
@@ -28,6 +24,7 @@ class Worker {
 }
 window.Worker = Worker;
 
+/* eslint-disable global-require */
 if (typeof window !== 'undefined') {
   // ref: https://github.com/ant-design/ant-design/issues/18774
   if (!window.matchMedia) {
@@ -59,11 +56,7 @@ Object.defineProperty(global.window.console, 'error', {
   configurable: true,
   value: (...rest) => {
     const logStr = rest.join('');
-    if (
-      logStr.includes(
-        'Warning: An update to %s inside a test was not wrapped in act(...)',
-      )
-    ) {
+    if (logStr.includes('Warning: An update to %s inside a test was not wrapped in act(...)')) {
       return;
     }
     errorLog(...rest);

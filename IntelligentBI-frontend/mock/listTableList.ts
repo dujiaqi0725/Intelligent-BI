@@ -1,6 +1,6 @@
-import { parse } from 'node:url';
-import dayjs from 'dayjs';
-import type { Request, Response } from 'express';
+import { Request, Response } from 'express';
+import moment from 'moment';
+import { parse } from 'url';
 
 // mock tableListDataSource
 const genList = (current: number, pageSize: number) => {
@@ -21,8 +21,8 @@ const genList = (current: number, pageSize: number) => {
       desc: '这是一段描述',
       callNo: Math.floor(Math.random() * 1000),
       status: Math.floor(Math.random() * 10) % 4,
-      updatedAt: dayjs().format('YYYY-MM-DD'),
-      createdAt: dayjs().format('YYYY-MM-DD'),
+      updatedAt: moment().format('YYYY-MM-DD'),
+      createdAt: moment().format('YYYY-MM-DD'),
       progress: Math.ceil(Math.random() * 100),
     });
   }
@@ -34,10 +34,7 @@ let tableListDataSource = genList(1, 100);
 
 function getRule(req: Request, res: Response, u: string) {
   let realUrl = u;
-  if (
-    !realUrl ||
-    Object.prototype.toString.call(realUrl) !== '[object String]'
-  ) {
+  if (!realUrl || Object.prototype.toString.call(realUrl) !== '[object String]') {
     realUrl = req.url;
   }
   const { current = 1, pageSize = 10 } = req.query;
@@ -56,8 +53,8 @@ function getRule(req: Request, res: Response, u: string) {
     dataSource = dataSource.sort((prev, next) => {
       let sortNumber = 0;
       (Object.keys(sorter) as Array<keyof API.RuleListItem>).forEach((key) => {
-        const nextSort = next?.[key] as number;
-        const preSort = prev?.[key] as number;
+        let nextSort = next?.[key] as number;
+        let preSort = prev?.[key] as number;
         if (sorter[key] === 'descend') {
           if (preSort - nextSort > 0) {
             sortNumber += -1;
@@ -81,25 +78,21 @@ function getRule(req: Request, res: Response, u: string) {
     };
     if (Object.keys(filter).length > 0) {
       dataSource = dataSource.filter((item) => {
-        return (Object.keys(filter) as Array<keyof API.RuleListItem>).some(
-          (key) => {
-            if (!filter[key]) {
-              return true;
-            }
-            if (filter[key].includes(`${item[key]}`)) {
-              return true;
-            }
-            return false;
-          },
-        );
+        return (Object.keys(filter) as Array<keyof API.RuleListItem>).some((key) => {
+          if (!filter[key]) {
+            return true;
+          }
+          if (filter[key].includes(`${item[key]}`)) {
+            return true;
+          }
+          return false;
+        });
       });
     }
   }
 
   if (params.name) {
-    dataSource = dataSource.filter((data) =>
-      data?.name?.includes(params.name || ''),
-    );
+    dataSource = dataSource.filter((data) => data?.name?.includes(params.name || ''));
   }
   const result = {
     data: dataSource,
@@ -114,21 +107,17 @@ function getRule(req: Request, res: Response, u: string) {
 
 function postRule(req: Request, res: Response, u: string, b: Request) {
   let realUrl = u;
-  if (
-    !realUrl ||
-    Object.prototype.toString.call(realUrl) !== '[object String]'
-  ) {
+  if (!realUrl || Object.prototype.toString.call(realUrl) !== '[object String]') {
     realUrl = req.url;
   }
 
-  const body = b?.body || req.body;
+  const body = (b && b.body) || req.body;
   const { method, name, desc, key } = body;
 
   switch (method) {
+    /* eslint no-case-declarations:0 */
     case 'delete':
-      tableListDataSource = tableListDataSource.filter(
-        (item) => key.indexOf(item.key) === -1,
-      );
+      tableListDataSource = tableListDataSource.filter((item) => key.indexOf(item.key) === -1);
       break;
     case 'post':
       (() => {
@@ -145,8 +134,8 @@ function postRule(req: Request, res: Response, u: string, b: Request) {
           desc,
           callNo: Math.floor(Math.random() * 1000),
           status: Math.floor(Math.random() * 10) % 2,
-          updatedAt: dayjs().format('YYYY-MM-DD'),
-          createdAt: dayjs().format('YYYY-MM-DD'),
+          updatedAt: moment().format('YYYY-MM-DD'),
+          createdAt: moment().format('YYYY-MM-DD'),
           progress: Math.ceil(Math.random() * 100),
         };
         tableListDataSource.unshift(newRule);
