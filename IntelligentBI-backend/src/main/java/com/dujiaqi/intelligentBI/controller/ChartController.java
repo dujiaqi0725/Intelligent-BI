@@ -6,23 +6,28 @@ import com.dujiaqi.intelligentBI.common.BaseResponse;
 import com.dujiaqi.intelligentBI.common.DeleteRequest;
 import com.dujiaqi.intelligentBI.common.ErrorCode;
 import com.dujiaqi.intelligentBI.common.ResultUtils;
+import com.dujiaqi.intelligentBI.constant.FileConstant;
 import com.dujiaqi.intelligentBI.constant.UserConstant;
 import com.dujiaqi.intelligentBI.exception.BusinessException;
 import com.dujiaqi.intelligentBI.exception.ThrowUtils;
-import com.dujiaqi.intelligentBI.model.dto.chart.ChartAddRequest;
-import com.dujiaqi.intelligentBI.model.dto.chart.ChartEditRequest;
-import com.dujiaqi.intelligentBI.model.dto.chart.ChartQueryRequest;
-import com.dujiaqi.intelligentBI.model.dto.chart.ChartUpdateRequest;
+import com.dujiaqi.intelligentBI.model.dto.chart.*;
+import com.dujiaqi.intelligentBI.model.dto.file.UploadFileRequest;
 import com.dujiaqi.intelligentBI.model.entity.Chart;
 import com.dujiaqi.intelligentBI.model.entity.User;
+import com.dujiaqi.intelligentBI.model.enums.FileUploadBizEnum;
 import com.dujiaqi.intelligentBI.service.ChartService;
 import com.dujiaqi.intelligentBI.service.UserService;
+import com.dujiaqi.intelligentBI.utils.ExcelUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.File;
 
 /**
  * 图表接口
@@ -209,6 +214,55 @@ public class ChartController {
         boolean result = chartService.updateById(chart);
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
+    }
+
+    /**
+     * 数据分析
+     *
+     * @param multipartFile excel文件
+     * @param genChartByAiRequest 请求参数
+     * @param request
+     * @return
+     */
+    @PostMapping("/gen")
+    public BaseResponse<String> genCharByAi(@RequestPart("file") MultipartFile multipartFile,
+                                            GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        String chartType = genChartByAiRequest.getChartType();
+        String name = genChartByAiRequest.getName();
+        String goal = genChartByAiRequest.getGoal();
+        //校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal) , ErrorCode.PARAMS_ERROR , "分析目标不能为空");
+        ThrowUtils.throwIf(StringUtils.isBlank(name) , ErrorCode.PARAMS_ERROR , "图表名称不能为空");
+
+        //处理用户输入
+        StringBuilder userInput = new StringBuilder();
+        userInput.append("你是一个数据分析师,接下来我会给你我的分析目标和原始数据,请告诉我分析结论.").append("\n");
+        userInput.append("分析目标:").append(goal).append("\n");
+        // 压缩后的数据
+        String result = ExcelUtils.excelToCsv(multipartFile);
+        userInput.append("数据:").append(result).append("\n");
+        return ResultUtils.success(userInput.toString());
+
+
+//        User loginUser = userService.getLoginUser(request);
+//        // 文件目录：根据业务、用户来划分
+//        String uuid = RandomStringUtils.randomAlphanumeric(8);
+//        String filename = uuid + "-" + multipartFile.getOriginalFilename();
+//        File file = null;
+//        try {
+//            // 返回可访问地址
+//            return ResultUtils.success(result);
+//        } catch (Exception e) {
+//            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
+//        } finally {
+//            if (file != null) {
+//                // 删除临时文件
+//                boolean delete = file.delete();
+//                if (!delete) {
+//                    log.error("file delete error, filepath = {}");
+//                }
+//            }
+//        }
     }
 
     // endregion
