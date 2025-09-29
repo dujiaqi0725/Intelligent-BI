@@ -99,3 +99,9 @@ knife4j:
         api-rule: package
         api-rule-resources:
           - com.dujiaqi.intelligentBI.controller
+
+# 通义千问API
+qwen:
+  api: sk-jjzkmtekstrefcqffveieehlwntolzfidgwgsamxfsvgxeth
+  url: https://api.siliconflow.cn/v1/chat/completions
+  model: Qwen/Qwen3-235B-A22B-Instruct-2507

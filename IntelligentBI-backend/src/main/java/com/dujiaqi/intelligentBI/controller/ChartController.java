@@ -2,32 +2,31 @@ package com.dujiaqi.intelligentBI.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dujiaqi.intelligentBI.annotation.AuthCheck;
+import com.dujiaqi.intelligentBI.api.QwenAiAPI;
 import com.dujiaqi.intelligentBI.common.BaseResponse;
 import com.dujiaqi.intelligentBI.common.DeleteRequest;
 import com.dujiaqi.intelligentBI.common.ErrorCode;
 import com.dujiaqi.intelligentBI.common.ResultUtils;
-import com.dujiaqi.intelligentBI.constant.FileConstant;
 import com.dujiaqi.intelligentBI.constant.UserConstant;
 import com.dujiaqi.intelligentBI.exception.BusinessException;
 import com.dujiaqi.intelligentBI.exception.ThrowUtils;
+import com.dujiaqi.intelligentBI.model.dto.api.CreateChatCompletionResponse;
 import com.dujiaqi.intelligentBI.model.dto.chart.*;
-import com.dujiaqi.intelligentBI.model.dto.file.UploadFileRequest;
 import com.dujiaqi.intelligentBI.model.entity.Chart;
 import com.dujiaqi.intelligentBI.model.entity.User;
-import com.dujiaqi.intelligentBI.model.enums.FileUploadBizEnum;
+import com.dujiaqi.intelligentBI.model.vo.BiResponse;
 import com.dujiaqi.intelligentBI.service.ChartService;
 import com.dujiaqi.intelligentBI.service.UserService;
 import com.dujiaqi.intelligentBI.utils.ExcelUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
-import java.io.File;
 
 /**
  * 图表接口
@@ -45,6 +44,15 @@ public class ChartController {
 
     @Resource
     private UserService userService;
+
+    @Value("${qwen.api}")
+    private String apiKey;
+
+    @Value("${qwen.url}")
+    private String url;
+
+    @Value("${qwen.model}")
+    private String model;
 
     // region 增删改查
 
@@ -225,7 +233,7 @@ public class ChartController {
      * @return
      */
     @PostMapping("/gen")
-    public BaseResponse<String> genCharByAi(@RequestPart("file") MultipartFile multipartFile,
+    public BaseResponse<BiResponse> genCharByAi(@RequestPart("file") MultipartFile multipartFile,
                                             GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         String chartType = genChartByAiRequest.getChartType();
         String name = genChartByAiRequest.getName();
@@ -234,14 +242,39 @@ public class ChartController {
         ThrowUtils.throwIf(StringUtils.isBlank(goal) , ErrorCode.PARAMS_ERROR , "分析目标不能为空");
         ThrowUtils.throwIf(StringUtils.isBlank(name) , ErrorCode.PARAMS_ERROR , "图表名称不能为空");
 
+        final String prompt = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容：\n" +
+                "分析需求：\n" +
+                "{数据分析的需求或者目标}\n" +
+                "原始数据：\n" +
+                "{csv格式的原始数据，用,作为分隔符}\n" +
+                "请根据这两部分内容，按照以下指定格式生成内容（此外不要输出任何多余的开头、结尾、注释）\n" +
+                "【【【【【\n" +
+                "{前端 Echarts V5 的 option 配置对象js代码， 合理地将数据进行可视化，不要生成任何多余\n" +
+                "【【【【【\n" +
+                "{明确的数据分析结论、越详细越好，不要生成多余的注释}";
+
         //处理用户输入
         StringBuilder userInput = new StringBuilder();
-        userInput.append("你是一个数据分析师,接下来我会给你我的分析目标和原始数据,请告诉我分析结论.").append("\n");
-        userInput.append("分析目标:").append(goal).append("\n");
+        userInput.append(prompt).append("\n");
+        userInput.append("分析需求:").append(goal).append("\n");
         // 压缩后的数据
         String result = ExcelUtils.excelToCsv(multipartFile);
-        userInput.append("数据:").append(result).append("\n");
-        return ResultUtils.success(userInput.toString());
+        userInput.append("原始数据:").append(result).append("\n");
+
+        QwenAiAPI qwenAiAPI = new QwenAiAPI();
+        CreateChatCompletionResponse createChatCompletionResponse = qwenAiAPI.doChat(apiKey, url, model, userInput.toString());
+        String answer = createChatCompletionResponse.getChoices().get(0).getMessage().getContent();
+        String[] splits = answer.split("【【【【【");
+        if (splits.length < 3){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR , "AI 生成错误");
+        }
+
+        String genChart = splits[1];
+        String genResult = splits[2];
+        BiResponse biResponse = new BiResponse();
+        biResponse.setGenChart(genChart);
+        biResponse.setGenResult(genResult);
+        return ResultUtils.success(biResponse);
 
 
 //        User loginUser = userService.getLoginUser(request);
