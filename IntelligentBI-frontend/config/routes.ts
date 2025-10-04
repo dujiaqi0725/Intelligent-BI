@@ -1,7 +1,8 @@
 ﻿export default [
-  { path: '/user', layout: false, routes: [{ path: '/user/login', component: './user/login' }] },
-  { path: '/user', layout: false, routes: [{ path: '/user/register', component: './user/register' }] },
-  { path: '/welcome', icon: 'smile', component: './Welcome' },
+  { path: '/User', layout: false, routes: [{ path: '/User/login', component: './User/login' }] },
+  { path: '/User', layout: false, routes: [{ path: '/User/register', component: './User/register' }] },
+  {path:'/',redirect: '/add_chart'},
+  {path: '/add_chart',name: "智能分析" , icon: 'BarChartOutlined', component: './AddChart'},
   {
     path: '/admin',
     icon: 'crown',
@@ -11,7 +12,6 @@
       { path: '/admin/sub-page', name: '管理页面2', component: './Admin' },
     ],
   },
-  { icon: 'table', path: '/list', component: './TableList' },
   { path: '/', redirect: '/welcome' },
   { path: '*', layout: false, component: './404' },
 ];

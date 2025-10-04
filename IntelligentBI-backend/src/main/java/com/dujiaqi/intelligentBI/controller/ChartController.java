@@ -242,6 +242,8 @@ public class ChartController {
         ThrowUtils.throwIf(StringUtils.isBlank(goal) , ErrorCode.PARAMS_ERROR , "分析目标不能为空");
         ThrowUtils.throwIf(StringUtils.isBlank(name) , ErrorCode.PARAMS_ERROR , "图表名称不能为空");
 
+        User loginUser = userService.getLoginUser(request);
+
         final String prompt = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容：\n" +
                 "分析需求：\n" +
                 "{数据分析的需求或者目标}\n" +
@@ -249,17 +251,22 @@ public class ChartController {
                 "{csv格式的原始数据，用,作为分隔符}\n" +
                 "请根据这两部分内容，按照以下指定格式生成内容（此外不要输出任何多余的开头、结尾、注释）\n" +
                 "【【【【【\n" +
-                "{前端 Echarts V5 的 option 配置对象js代码， 合理地将数据进行可视化，不要生成任何多余\n" +
+                "{前端 Echarts V5 的 option 配置对象json代码， 合理地将数据进行可视化，不要生成任何多余\n" +
                 "【【【【【\n" +
                 "{明确的数据分析结论、越详细越好，不要生成多余的注释}";
 
         //处理用户输入
         StringBuilder userInput = new StringBuilder();
         userInput.append(prompt).append("\n");
-        userInput.append("分析需求:").append(goal).append("\n");
+        userInput.append("分析需求:").append("\n");
+        String userGoal = goal;
+        if (StringUtils.isNotBlank(chartType)){
+            userGoal += ",请使用" + chartType;
+        }
+        userInput.append(userGoal).append("\n");
         // 压缩后的数据
-        String result = ExcelUtils.excelToCsv(multipartFile);
-        userInput.append("原始数据:").append(result).append("\n");
+        String csvData = ExcelUtils.excelToCsv(multipartFile);
+        userInput.append("原始数据:").append(csvData).append("\n");
 
         QwenAiAPI qwenAiAPI = new QwenAiAPI();
         CreateChatCompletionResponse createChatCompletionResponse = qwenAiAPI.doChat(apiKey, url, model, userInput.toString());
@@ -269,11 +276,22 @@ public class ChartController {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR , "AI 生成错误");
         }
 
-        String genChart = splits[1];
-        String genResult = splits[2];
+        String genChart = splits[1].trim();
+        String genResult = splits[2].trim();
+        //插入到数据库
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(userGoal);
+        chart.setChartData(csvData);
+        chart.setGenChart(genChart);
+        chart.setGenResult(genResult);
+        chart.setUserId(loginUser.getId());
+        boolean saveResult = chartService.save(chart);
+        ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图表保存失败");
         BiResponse biResponse = new BiResponse();
         biResponse.setGenChart(genChart);
         biResponse.setGenResult(genResult);
+        biResponse.setChartId(chart.getId());
         return ResultUtils.success(biResponse);
 
 

@@ -15,4 +15,10 @@ public class BiResponse {
      */
     private String genResult;
 
+
+    /**
+     * 生成的图表id
+     */
+    private Long chartId;
+
 }

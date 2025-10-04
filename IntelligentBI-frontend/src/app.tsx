@@ -9,7 +9,7 @@ import { errorConfig } from './requestConfig';
 import { getLoginUserUsingGet } from '@/services/intelligentBI/userController';
 
 const isDev = process.env.NODE_ENV === 'development';
-const loginPath = '/user/login';
+const loginPath = '/User/login';
 
 /**
  * @see  https://umijs.org/zh-CN/plugins/plugin-initial-state
