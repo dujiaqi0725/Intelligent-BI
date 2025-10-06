@@ -130,6 +130,12 @@
                 </exclusion>
             </exclusions>
         </dependency>
+<!--        https://redisson.pro/docs/getting-started/-->
+        <dependency>
+            <groupId>org.redisson</groupId>
+            <artifactId>redisson</artifactId>
+            <version>3.52.0</version>
+        </dependency>
     </dependencies>
 
     <build>

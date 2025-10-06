@@ -11,6 +11,7 @@ import com.dujiaqi.intelligentBI.common.ResultUtils;
 import com.dujiaqi.intelligentBI.constant.UserConstant;
 import com.dujiaqi.intelligentBI.exception.BusinessException;
 import com.dujiaqi.intelligentBI.exception.ThrowUtils;
+import com.dujiaqi.intelligentBI.manager.RedisLimiterManager;
 import com.dujiaqi.intelligentBI.model.dto.api.CreateChatCompletionResponse;
 import com.dujiaqi.intelligentBI.model.dto.chart.*;
 import com.dujiaqi.intelligentBI.model.entity.Chart;
@@ -47,6 +48,9 @@ public class ChartController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
 
     @Value("${qwen.api}")
     private String apiKey;
@@ -256,6 +260,9 @@ public class ChartController {
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix) , ErrorCode.SYSTEM_ERROR , "文件后缀非法");
 
         User loginUser = userService.getLoginUser(request);
+
+        //限流判断
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
 
         final String prompt = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容：\n" +
                 "分析需求：\n" +
