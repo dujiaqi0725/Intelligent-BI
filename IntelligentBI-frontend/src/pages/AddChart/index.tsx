@@ -70,7 +70,7 @@ const AddChart: React.FC = () => {
         <Col span={12}>
           <Card title="智能分析">
             <Form
-              name="validate_other"
+              name="addChart"
               labelAlign="left"
               labelCol={{ span: 4 }}
               wrapperCol={{ span: 16 }}
@@ -87,7 +87,6 @@ const AddChart: React.FC = () => {
               <Form.Item
                 name="name"
                 label="图表名称"
-                rules={[{ required: true, message: '请输入分析目标' }]}
               >
                 <Input placeholder="请输入图表名称" />
               </Form.Item>
@@ -95,7 +94,7 @@ const AddChart: React.FC = () => {
                 <Select
                   options={[
                     { value: '折线图', label: '折线图' },
-                    { value: '饼状图', label: '饼状图' },
+                    { value: '柱状图', label: '柱状图' },
                     { value: '堆叠图', label: '堆叠图' },
                     { value: '饼图', label: '饼图' },
                     { value: '雷达图', label: '雷达图' },

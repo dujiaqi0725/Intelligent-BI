@@ -31,6 +31,8 @@ import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * 图表接口
@@ -51,6 +53,9 @@ public class ChartController {
 
     @Resource
     private RedisLimiterManager redisLimiterManager;
+
+    @Resource
+    private ThreadPoolExecutor threadPoolExecutor;
 
     @Value("${qwen.api}")
     private String apiKey;
@@ -230,9 +235,8 @@ public class ChartController {
         ThrowUtils.throwIf(!result, ErrorCode.OPERATION_ERROR);
         return ResultUtils.success(true);
     }
-
     /**
-     * 数据分析
+     * 数据分析 （同步）
      *
      * @param multipartFile excel文件
      * @param genChartByAiRequest 请求参数
@@ -241,6 +245,90 @@ public class ChartController {
      */
     @PostMapping("/gen")
     public BaseResponse<BiResponse> genCharByAi(@RequestPart("file") MultipartFile multipartFile,
+                                                GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        String chartType = genChartByAiRequest.getChartType();
+        String name = genChartByAiRequest.getName();
+        String goal = genChartByAiRequest.getGoal();
+        //校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal), ErrorCode.PARAMS_ERROR, "分析目标不能为空");
+        ThrowUtils.throwIf(StringUtils.isBlank(name), ErrorCode.PARAMS_ERROR, "图表名称不能为空");
+        //校验文件
+        long size = multipartFile.getSize();
+        String originalFilename = multipartFile.getOriginalFilename();
+        //校验文件大小
+        final long ONE_MB = 1024 * 1024L;
+        ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
+        //校验文件后缀
+        final List<String> validFileSuffixList = Arrays.asList("png", "jpg", "svg", "webp", "jpeg");
+        String suffix = FileUtil.getSuffix(originalFilename);
+        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.SYSTEM_ERROR, "文件后缀非法");
+
+        User loginUser = userService.getLoginUser(request);
+
+        //限流判断
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
+
+        final String prompt = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容：\n" +
+                "分析需求：\n" +
+                "{数据分析的需求或者目标}\n" +
+                "原始数据：\n" +
+                "{csv格式的原始数据，用,作为分隔符}\n" +
+                "请根据这两部分内容，按照以下指定格式生成内容（此外不要输出任何多余的开头、结尾、注释）\n" +
+                "【【【【【\n" +
+                "{前端 Echarts V5 的 option 配置对象json代码， 合理地将数据进行可视化，不要生成任何多余\n" +
+                "【【【【【\n" +
+                "{明确的数据分析结论、越详细越好，不要生成多余的注释}";
+
+        //处理用户输入
+        StringBuilder userInput = new StringBuilder();
+        userInput.append(prompt).append("\n");
+        userInput.append("分析需求:").append("\n");
+        String userGoal = goal;
+        if (StringUtils.isNotBlank(chartType)) {
+            userGoal += ",请使用" + chartType;
+        }
+        userInput.append(userGoal).append("\n");
+        // 压缩后的数据
+        String csvData = ExcelUtils.excelToCsv(multipartFile);
+        userInput.append("原始数据:").append(csvData).append("\n");
+
+        QwenAiAPI qwenAiAPI = new QwenAiAPI();
+        String answer = qwenAiAPI.doChat(apiKey, url, model, userInput.toString());
+        String[] splits = answer.split("【【【【【");
+        if (splits.length < 3) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 生成错误");
+        }
+
+        String genChart = splits[1].trim();
+        String genResult = splits[2].trim();
+        //插入到数据库
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(userGoal);
+        chart.setChartData(csvData);
+        chart.setGenChart(genChart);
+        chart.setGenResult(genResult);
+        chart.setUserId(loginUser.getId());
+        chart.setChartType(chartType);
+        boolean saveResult = chartService.save(chart);
+        ThrowUtils.throwIf(!saveResult, ErrorCode.SYSTEM_ERROR, "图表保存失败");
+        BiResponse biResponse = new BiResponse();
+        biResponse.setGenChart(genChart);
+        biResponse.setGenResult(genResult);
+        biResponse.setChartId(chart.getId());
+        return ResultUtils.success(biResponse);
+    }
+
+    /**
+     * 数据分析 （异步）
+     *
+     * @param multipartFile excel文件
+     * @param genChartByAiRequest 请求参数
+     * @param request
+     * @return
+     */
+    @PostMapping("/gen/async")
+    public BaseResponse<BiResponse> genCharByAiAsync(@RequestPart("file") MultipartFile multipartFile,
                                             GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
         String chartType = genChartByAiRequest.getChartType();
         String name = genChartByAiRequest.getName();
@@ -255,7 +343,7 @@ public class ChartController {
         final long ONE_MB = 1024 * 1024L;
         ThrowUtils.throwIf(size > ONE_MB , ErrorCode.PARAMS_ERROR , "文件超过 1M");
         //校验文件后缀
-        final List<String> validFileSuffixList = Arrays.asList("png","jpg","svg","webp","jpeg");
+        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls ");
         String suffix = FileUtil.getSuffix(originalFilename);
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix) , ErrorCode.SYSTEM_ERROR , "文件后缀非法");
 
@@ -288,54 +376,61 @@ public class ChartController {
         String csvData = ExcelUtils.excelToCsv(multipartFile);
         userInput.append("原始数据:").append(csvData).append("\n");
 
-        QwenAiAPI qwenAiAPI = new QwenAiAPI();
-        CreateChatCompletionResponse createChatCompletionResponse = qwenAiAPI.doChat(apiKey, url, model, userInput.toString());
-        String answer = createChatCompletionResponse.getChoices().get(0).getMessage().getContent();
-        String[] splits = answer.split("【【【【【");
-        if (splits.length < 3){
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR , "AI 生成错误");
-        }
-
-        String genChart = splits[1].trim();
-        String genResult = splits[2].trim();
         //插入到数据库
         Chart chart = new Chart();
         chart.setName(name);
         chart.setGoal(userGoal);
         chart.setChartData(csvData);
-        chart.setGenChart(genChart);
-        chart.setGenResult(genResult);
+        chart.setStatus("wait");
         chart.setUserId(loginUser.getId());
         chart.setChartType(chartType);
         boolean saveResult = chartService.save(chart);
         ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图表保存失败");
+
+        CompletableFuture.runAsync(() -> {
+            // 先修改任务状态为 "执行中"。等待执行成功后，修改为"已完成"，保存执行结果；执行失败后，状态修改为"失败"，记录失败信息
+            Chart updateChart = new Chart();
+            updateChart.setId(chart.getId());
+            updateChart.setStatus("running");
+            boolean isSuccessUpdate = chartService.updateById(updateChart);
+            if (!isSuccessUpdate) {
+                handleChartUpdateError(chart.getId(),"更新图表执行中状态失败");
+                return;
+            }
+            //调用 AI
+            QwenAiAPI qwenAiAPI = new QwenAiAPI();
+            String answer = qwenAiAPI.doChat(apiKey, url, model, userInput.toString());
+            String[] splits = answer.split("【【【【【");
+            if (splits.length < 3){
+                handleChartUpdateError(chart.getId(),"AI 生成失败");
+                return;
+            }
+            String genChart = splits[1].trim();
+            String genResult = splits[2].trim();
+            Chart updateChartResult = new Chart();
+            updateChartResult.setId(chart.getId());
+            updateChartResult.setStatus("succeed");
+            updateChartResult.setGenChart(genChart);
+            updateChartResult.setGenResult(genResult);
+            boolean isSuccess = chartService.updateById(updateChartResult);
+            if (!isSuccess) {
+                handleChartUpdateError(chart.getId(),"更新图表成功状态失败");
+            }
+        },threadPoolExecutor);
+
         BiResponse biResponse = new BiResponse();
-        biResponse.setGenChart(genChart);
-        biResponse.setGenResult(genResult);
         biResponse.setChartId(chart.getId());
         return ResultUtils.success(biResponse);
-
-
-//        User loginUser = userService.getLoginUser(request);
-//        // 文件目录：根据业务、用户来划分
-//        String uuid = RandomStringUtils.randomAlphanumeric(8);
-//        String filename = uuid + "-" + multipartFile.getOriginalFilename();
-//        File file = null;
-//        try {
-//            // 返回可访问地址
-//            return ResultUtils.success(result);
-//        } catch (Exception e) {
-//            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "上传失败");
-//        } finally {
-//            if (file != null) {
-//                // 删除临时文件
-//                boolean delete = file.delete();
-//                if (!delete) {
-//                    log.error("file delete error, filepath = {}");
-//                }
-//            }
-//        }
     }
 
-    // endregion
+
+    private void handleChartUpdateError(long chartId,String execMessage){
+        Chart updateChart = new Chart();
+        updateChart.setId(chartId);
+        updateChart.setStatus("failed");
+        updateChart.setExecMessage(execMessage);
+        boolean isSuccessUpdate = chartService.updateById(updateChart);
+        ThrowUtils.throwIf(!isSuccessUpdate,ErrorCode.OPERATION_ERROR,"更新图表为失败状态失败");
+    }
+
 }

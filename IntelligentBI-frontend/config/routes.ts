@@ -3,6 +3,7 @@
   { path: '/User', layout: false, routes: [{ path: '/User/register', component: './User/register' }] },
   {path:'/',redirect: '/add_chart'},
   {path: '/add_chart',name: "智能分析" , icon: 'BarChartOutlined', component: './AddChart'},
+  {path: '/add_chart_async',name: "智能分析(异步)" , icon: 'BarChartOutlined', component: './AddChartAsync'},
   {path: '/my_chart',name: "我的图表" , icon: 'PieChartOutlined', component: './MyChart'},
   {
     path: '/admin',

@@ -17,7 +17,7 @@ import java.util.Map;
 @Service
 @Slf4j
 public class QwenAiAPI {
-    public CreateChatCompletionResponse doChat(String apiKey , String url , String model, String message){
+    public String doChat(String apiKey , String url , String model, String message){
         if (StringUtils.isBlank(apiKey)){
             throw new BusinessException(ErrorCode.PARAMS_ERROR,"没有apiKey");
         }
@@ -50,7 +50,8 @@ public class QwenAiAPI {
                 .body(json)
                 .execute()
                 .body();
-        return JSONUtil.toBean(result, CreateChatCompletionResponse.class);
+        CreateChatCompletionResponse createChatCompletionResponse = JSONUtil.toBean(result, CreateChatCompletionResponse.class);
+        return createChatCompletionResponse.getChoices().get(0).getMessage().getContent();
     }
 
 }
