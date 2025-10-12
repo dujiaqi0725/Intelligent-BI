@@ -20,6 +20,7 @@ public class FanoutConsumer {
     // 创建队列，随机分配一个队列名称
     String queueName1 = "xiaowang_queue";
     channel1.queueDeclare(queueName1, true, false, false, null);
+    // routingKey 参数 ： 路由键，控制消息要转发给哪个队列的
     channel1.queueBind(queueName1, EXCHANGE_NAME, "");
 
     String queueName2 = "xiaoli_queue";

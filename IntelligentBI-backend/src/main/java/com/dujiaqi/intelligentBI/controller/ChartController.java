@@ -4,6 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.dujiaqi.intelligentBI.annotation.AuthCheck;
 import com.dujiaqi.intelligentBI.api.QwenAiAPI;
+import com.dujiaqi.intelligentBI.bizmq.BiMessageProducer;
 import com.dujiaqi.intelligentBI.common.BaseResponse;
 import com.dujiaqi.intelligentBI.common.DeleteRequest;
 import com.dujiaqi.intelligentBI.common.ErrorCode;
@@ -22,6 +23,8 @@ import com.dujiaqi.intelligentBI.service.UserService;
 import com.dujiaqi.intelligentBI.utils.ExcelUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.aspectj.weaver.ast.Var;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -55,7 +58,13 @@ public class ChartController {
     private RedisLimiterManager redisLimiterManager;
 
     @Resource
+    private BiMessageProducer biMessageProducer;
+
+    @Resource
     private ThreadPoolExecutor threadPoolExecutor;
+
+    @Resource
+    private QwenAiAPI qwenAiAPI;
 
     @Value("${qwen.api}")
     private String apiKey;
@@ -292,7 +301,6 @@ public class ChartController {
         String csvData = ExcelUtils.excelToCsv(multipartFile);
         userInput.append("原始数据:").append(csvData).append("\n");
 
-        QwenAiAPI qwenAiAPI = new QwenAiAPI();
         String answer = qwenAiAPI.doChat(apiKey, url, model, userInput.toString());
         String[] splits = answer.split("【【【【【");
         if (splits.length < 3) {
@@ -398,7 +406,6 @@ public class ChartController {
                 return;
             }
             //调用 AI
-            QwenAiAPI qwenAiAPI = new QwenAiAPI();
             String answer = qwenAiAPI.doChat(apiKey, url, model, userInput.toString());
             String[] splits = answer.split("【【【【【");
             if (splits.length < 3){
@@ -423,6 +430,81 @@ public class ChartController {
         return ResultUtils.success(biResponse);
     }
 
+
+    /**
+     * 数据分析 （异步消息队列）
+     *
+     * @param multipartFile excel文件
+     * @param genChartByAiRequest 请求参数
+     * @param request
+     * @return
+     */
+    @PostMapping("/gen/async/mq")
+    public BaseResponse<BiResponse> genCharByAiAsyncMq(@RequestPart("file") MultipartFile multipartFile,
+                                                     GenChartByAiRequest genChartByAiRequest, HttpServletRequest request) {
+        String chartType = genChartByAiRequest.getChartType();
+        String name = genChartByAiRequest.getName();
+        String goal = genChartByAiRequest.getGoal();
+        //校验
+        ThrowUtils.throwIf(StringUtils.isBlank(goal) , ErrorCode.PARAMS_ERROR , "分析目标不能为空");
+        ThrowUtils.throwIf(StringUtils.isBlank(name) , ErrorCode.PARAMS_ERROR , "图表名称不能为空");
+        //校验文件
+        long size = multipartFile.getSize();
+        String originalFilename = multipartFile.getOriginalFilename();
+        //校验文件大小
+        final long ONE_MB = 1024 * 1024L;
+        ThrowUtils.throwIf(size > ONE_MB , ErrorCode.PARAMS_ERROR , "文件超过 1M");
+        //校验文件后缀
+        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls ");
+        String suffix = FileUtil.getSuffix(originalFilename);
+        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix) , ErrorCode.SYSTEM_ERROR , "文件后缀非法");
+
+        User loginUser = userService.getLoginUser(request);
+
+        //限流判断
+        redisLimiterManager.doRateLimit("genChartByAi_" + loginUser.getId());
+
+        final String prompt = "你是一个数据分析师和前端开发专家，接下来我会按照以下固定格式给你提供内容：\n" +
+                "分析需求：\n" +
+                "{数据分析的需求或者目标}\n" +
+                "原始数据：\n" +
+                "{csv格式的原始数据，用,作为分隔符}\n" +
+                "请根据这两部分内容，按照以下指定格式生成内容（此外不要输出任何多余的开头、结尾、注释）\n" +
+                "【【【【【\n" +
+                "{前端 Echarts V5 的 option 配置对象json代码， 合理地将数据进行可视化，不要生成任何多余\n" +
+                "【【【【【\n" +
+                "{明确的数据分析结论、越详细越好，不要生成多余的注释}";
+
+        //处理用户输入
+        StringBuilder userInput = new StringBuilder();
+        userInput.append(prompt).append("\n");
+        userInput.append("分析需求:").append("\n");
+        String userGoal = goal;
+        if (StringUtils.isNotBlank(chartType)){
+            userGoal += ",请使用" + chartType;
+        }
+        userInput.append(userGoal).append("\n");
+        // 压缩后的数据
+        String csvData = ExcelUtils.excelToCsv(multipartFile);
+        userInput.append("原始数据:").append(csvData).append("\n");
+
+        //插入到数据库
+        Chart chart = new Chart();
+        chart.setName(name);
+        chart.setGoal(userGoal);
+        chart.setChartData(csvData);
+        chart.setStatus("wait");
+        chart.setUserId(loginUser.getId());
+        chart.setChartType(chartType);
+        boolean saveResult = chartService.save(chart);
+        ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图表保存失败");
+        Long newChartId = chart.getId();
+        biMessageProducer.sendMessage(String.valueOf(newChartId));
+
+        BiResponse biResponse = new BiResponse();
+        biResponse.setChartId(chart.getId());
+        return ResultUtils.success(biResponse);
+    }
 
     private void handleChartUpdateError(long chartId,String execMessage){
         Chart updateChart = new Chart();

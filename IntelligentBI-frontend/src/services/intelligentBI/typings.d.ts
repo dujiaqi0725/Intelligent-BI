@@ -159,6 +159,12 @@ declare namespace API {
     id?: number;
   };
 
+  type genCharByAiAsyncMqUsingPOSTParams = {
+    chartType?: string;
+    goal?: string;
+    name?: string;
+  };
+
   type genCharByAiAsyncUsingPOSTParams = {
     chartType?: string;
     goal?: string;
