@@ -268,7 +268,7 @@ public class ChartController {
         final long ONE_MB = 1024 * 1024L;
         ThrowUtils.throwIf(size > ONE_MB, ErrorCode.PARAMS_ERROR, "文件超过 1M");
         //校验文件后缀
-        final List<String> validFileSuffixList = Arrays.asList("png", "jpg", "svg", "webp", "jpeg");
+        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls");
         String suffix = FileUtil.getSuffix(originalFilename);
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix), ErrorCode.SYSTEM_ERROR, "文件后缀非法");
 
@@ -302,7 +302,7 @@ public class ChartController {
         userInput.append("原始数据:").append(csvData).append("\n");
 
         String answer = qwenAiAPI.doChat(apiKey, url, model, userInput.toString());
-        String[] splits = answer.split("【【【【【");
+        String[] splits = answer.toString().split("【【【【【");
         if (splits.length < 3) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "AI 生成错误");
         }
@@ -326,6 +326,8 @@ public class ChartController {
         biResponse.setChartId(chart.getId());
         return ResultUtils.success(biResponse);
     }
+
+
 
     /**
      * 数据分析 （异步）
@@ -351,7 +353,7 @@ public class ChartController {
         final long ONE_MB = 1024 * 1024L;
         ThrowUtils.throwIf(size > ONE_MB , ErrorCode.PARAMS_ERROR , "文件超过 1M");
         //校验文件后缀
-        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls ");
+        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls");
         String suffix = FileUtil.getSuffix(originalFilename);
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix) , ErrorCode.SYSTEM_ERROR , "文件后缀非法");
 
@@ -455,7 +457,7 @@ public class ChartController {
         final long ONE_MB = 1024 * 1024L;
         ThrowUtils.throwIf(size > ONE_MB , ErrorCode.PARAMS_ERROR , "文件超过 1M");
         //校验文件后缀
-        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls ");
+        final List<String> validFileSuffixList = Arrays.asList("xlsx","xls");
         String suffix = FileUtil.getSuffix(originalFilename);
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix) , ErrorCode.SYSTEM_ERROR , "文件后缀非法");
 
